@@ -1,0 +1,370 @@
+indexing
+db.person.createIndex({"age":1})
+db.person.find({age:{$lte:20}}).explain()
+ db.person.find({age:{$lte:20}}).explain(executionStats)
+db.person.dropIndex({"age":1})
+ db.person.createIndex({"age":1,"gender":1})
+ db.person.find({age:{$lte:20},gender:"male"}).explain("executionStats")
+ db.person.dropIndex({"age":1,"gender":1})
+
+
+aggregation
+ db.person.aggregate([{$group:{_id:"$age",name:{$push:"$name"}}}])
+[
+  { _id: null, name: [ 'luffy' ] },
+  { _id: 21, name: [ 'jagruti', 'siddhi' ] },
+  { _id: 19, name: [ 'jhanvi', 'sanika' ] },
+  { _id: 20, name: [ 'isha', 'chaitanya', 'manjiri' ] },
+  { _id: 23, name: [ 'manas', 'pranav' ] },
+  { _id: 22, name: [ 'yash' ] }
+]
+ db.person.aggregate([{$group:{_id:"$gender",name:{$push:"$name"}}}])
+[
+  {
+    _id: 'female',
+    name: [ 'isha', 'jagruti', 'jhanvi', 'siddhi', 'manjiri', 'sanika' ]
+  },
+  { _id: null, name: [ 'luffy' ] },
+  { _id: 'male', name: [ 'chaitanya', 'yash', 'manas', 'pranav' ] }
+]
+ db.person.aggregate([{$group:{_id:"$gender",name:{$push:"$name"},count:{$sum:1}}}])
+[
+  {
+    _id: 'female',
+    name: [ 'isha', 'jagruti', 'jhanvi', 'siddhi', 'manjiri', 'sanika' ],
+    count: 6
+  },
+  { _id: null, name: [ 'luffy' ], count: 1 },
+  {
+    _id: 'male',
+    name: [ 'chaitanya', 'yash', 'manas', 'pranav' ],
+    count: 4
+ db.person.aggregate([{$match:{gender:"male"}},{$group:{_id:"$age",count:{$sum:1},name:{$push:"$name"}}}])
+[
+  { _id: 20, count: 1, name: [ 'chaitanya' ] },
+  { _id: 23, count: 2, name: [ 'manas', 'pranav' ] },
+  { _id: 22, count: 1, name: [ 'yash' ] }
+]
+db.person.aggregate([{$match:{gender:"male"}},{$group:{_id:"$age",count:{$sum:1},name:{$push:"$$ROOT"}}}])
+-----------------------------------------------------------------------------------------
+ maxSalary: { $max: "$salary" },
+      minSalary: { $min: "$salary" }
+
+
+
+ { $sort: { salary: -1 } },
+  { $limit: 3 }
+dbmsPt> 
+
+
+-----------------------------------------------------------------------------------------
+
+db.studata.insertMany([{name:"ram",marks:40,age:20},{name:"siya",marks:50,age:20},{name:"swati",marks:30,age:18},{name:"rahul",marks:50,age:21},{name:"riya",marks:60,age:21}])
+
+dbmsPt> var map=function(){emit(this.age,this.marks)}
+dbmsPt> var reduce=function(key,values){return Array.sum(values)}
+dbmsPt> db.studata.mapReduce(map,reduce,{out:"result"})
+dbmsPt> db.result.find()
+db.studata.mapReduce(map,reduce,{query:{age:{$gt:18}},out:"result"})
+
+
+
+
+dbmsPt> db.person.find({$and:[{age:{$gt:19}} , {age:{$lt:22}}]})
+dbmsPt> db.person.find({$and:[{age:{$gt:19}} , {gender:"female"}]})
+--------------------------------------------------------------------------------------------
+ set serveroutput on;
+SQL> CREATE OR REPLACE TRIGGER trigger_1
+  2  AFTER UPDATE OR DELETE OR INSERT ON lib_tab2 FOR EACH ROW
+  3  ENABLE
+  4     BEGIN
+  5             IF UPDATING THEN
+  6                     dbms_output.put_line(:OLD.status);
+  7                     INSERT INTO library_audit2 VALUES (SYSDATE,:OLD.book_name,:OLD.status,:NEW.status,'UPDATE');
+  8                  ELSIF INSERTING THEN
+  9                           dbms_output.put_line(:NEW.status);
+ 10                           INSERT INTO library_audit2 VALUES (SYSDATE,:NEW.book_name,:OLD.status,:NEW.status,'INSERT');
+ 11             ELSE
+ 12                     dbms_output.put_line(:OLD.book_name||'deleting');
+ 13                     INSERT INTO library_audit2 VALUES(SYSDATE,:OLD.book_name,:OLD.status,:NEW.status,'DELETE');
+ 14             END IF;
+ 15     END;
+ 16  /
+
+Trigger created.
+
+SQL> delete from lib_tab2 where book_name='silent hill';
+silent hilldeleting
+
+1 row deleted.
+
+SQL> update lib_tab2 set status='unavailable' where book_name='uncharted';
+available
+
+1 row updated.
+
+SQL> update lib_tab2 set status='pre-order' where book_name='god of war';
+available
+
+1 row updated.
+
+SQL> insert into lib_tab2 values('spm','unavailable');
+unavailable
+
+1 row created.
+
+SQL> select * from library_audit2;
+
+DATE_MODI BOOK_NAME                 OLD_STATUS      NEW_STATUS
+--------- ------------------------- --------------- ---------------
+ACTION
+---------------
+05-NOV-23 silent hill               unavailable
+DELETE
+
+05-NOV-23 uncharted                 available       unavailable
+UPDATE
+
+05-NOV-23 god of war                available       pre-order
+UPDATE
+
+
+DATE_MODI BOOK_NAME                 OLD_STATUS      NEW_STATUS
+--------- ------------------------- --------------- ---------------
+ACTION
+---------------
+05-NOV-23 spm                                       unavailable
+INSERT
+
+
+SQL> select * from lib_tab2;
+
+BOOK_NAME                 STATUS
+------------------------- ---------------
+dark matter               available
+god of war                pre-order
+spider man                unavailable
+uncharted                 unavailable
+spm                       unavailable
+-----------------------------------------------------------------------------------------
+ set serveroutput on;
+SQL> create or replace procedure roll1_list as
+  2  a int;
+  3  a1 varchar2(10);
+  4  b1 varchar2(10);
+  5  b int;
+  6  cursor c1 is select roll,name from old_roll;
+  7  cursor c2 is select roll,name from new_roll;
+  8  begin
+  9  open c1;
+ 10  open c2;
+ 11  loop
+ 12  fetch c1 into a,a1;
+ 13  exit when c1%notfound;
+ 14  begin
+ 15  select roll into b from new_roll where roll=a;
+ 16  exception
+ 17  when no_data_found then
+ 18  insert into new_roll (roll,name) values (a,a1);
+ 19  end;
+ 20  end loop;
+ 21  close c1;
+ 22  close c2;
+ 23  commit;
+ 24  end;
+ 25  /
+
+Procedure created.
+
+SQL> call roll1_list();
+
+Call completed.
+
+SQL> select * from new_roll;
+
+      ROLL NAME
+---------- -------------------------
+         2 b
+         5 bch
+         1 bc
+         4 d
+         3 bcd
+-----------------------------------------------------------------------------------
+ CREATE TABLE result(roll_number NUMBER , name VARCHAR2(25), class VARCHAR2(30));
+CREATE TABLE result(roll_number NUMBER , name VARCHAR2(25), class VARCHAR2(30))
+             *
+ERROR at line 1:
+ORA-00955: name is already used by an existing object
+
+
+SQL> drop table result;
+
+Table dropped.
+
+SQL> CREATE TABLE result(roll_number NUMBER , name VARCHAR2(25), class VARCHAR2(30));
+
+Table created.
+
+SQL> CREATE OR REPLACE FUNCTION func_1(r IN NUMBER, n IN VARCHAR2,m IN NUMBER) RETURN VARCHAR2 AS
+  2  BEGIN
+  3             procedure_1(r,n,m);
+  4             return 'SUCCESSFULL';
+  5  END;
+  6  /
+
+Warning: Function created with compilation errors.
+
+SQL> CREATE OR REPLACE PROCEDURE procedure_1 ( roll_no IN NUMBER, name IN VARCHAR2 ,marks IN NUMBER) AS
+  2     BEGIN
+  3             IF (marks<=1500 and marks>=990) THEN
+  4                     DBMS_OUTPUT.PUT_LINE ('DISTINCTION');
+  5                     INSERT INTO result VALUES (roll_no,name,'DISTINCTION');
+  6             ELSIF (marks<=989 and marks>=900) THEN
+  7                     DBMS_OUTPUT.PUT_LINE ('FIRST CLASS');
+  8                     INSERT INTO result VALUES (roll_no,name,'FIRST CLASS');
+  9             ELSIF (marks<=899 and marKs>825) THEN
+ 10                     DBMS_OUTPUT.PUT_LINE('HIGHER SECOND CLASS');
+ 11                     INSERT INTO result VALUES (roll_no,name,'HIGHER SECOND CLASS');
+ 12             ELSE
+ 13                     DBMS_OUTPUT.PUT_LINE ('FAIL');
+ 14                     INSERT INTO result VALUES (roll_no,name,'FAIL');
+ 15
+ 16         END IF;
+ 17         INSERT INTO stud_marks VALUES (name,marks);
+ 18      END procedure_1;
+ 19      /
+
+Procedure created.
+
+SQL> DECLARE
+  2     name_1 VARCHAR2(25);
+  3     roll_no_1 NUMBER;
+  4     marks_1 NUMBER;
+  5     class VARCHAR2(25);
+  6
+  7  BEGIN
+  8     roll_no_1:=&roll_no_1;
+  9     name_1:='&name_1';
+ 10     marks_1:=&marks_1;
+ 11     class := func_1(roll_no_1,name_1,marks_1);
+ 12     dbms_output.put_line(class);
+ 13  END;
+ 14  /
+Enter value for roll_no_1: 23
+old   8:        roll_no_1:=&roll_no_1;
+new   8:        roll_no_1:=23;
+Enter value for name_1: tony
+old   9:        name_1:='&name_1';
+new   9:        name_1:='tony';
+Enter value for marks_1: 1500
+old  10:        marks_1:=&marks_1;
+new  10:        marks_1:=1500;
+DISTINCTION
+SUCCESSFULL
+
+PL/SQL procedure successfully completed.
+
+SQL>-----------------------------------------------------------------------------------
+CREATE TABLE  borrower(roll_no NUMBER , name VARCHAR2(25), dateofissue DATE,name_of_book VARCHAR2(25), status VARCHAR2(20));
+
+Table created.
+
+SQL> CREATE TABLE fine(roll_no NUMBER,date_of_return DATE,amt NUMBER);
+
+Table created.
+
+SQL> INSERT INTO borrower VALUES(45,'ASHUTOSH',TO_DATE('01-08-2022','DD-MM-YYYY'),'HARRY POTTER','PENDING');
+
+1 row created.
+
+SQL> INSERT INTO borrower VALUES(46,'ARYAN',TO_DATE('15-08-2022','DD-MM-YYYY'),'DARK MATTER','PENDING');
+
+1 row created.
+
+SQL> INSERT INTO borrower VALUES(47,'ROHAN',TO_DATE('24-08-2022','DD-MM-YYYY'),'SILENT HILL','PENDING');
+
+1 row created.
+
+SQL> INSERT INTO borrower VALUES(48,'SANKET',TO_DATE('26-08-2022','DD-MM-YYYY'),'GOD OF WAR','PENDING');
+
+1 row created.
+
+SQL> INSERT INTO borrower VALUES(49,'SARTHAK',TO_DATE('09-09-2022','DD-MM-YYYY'),'SPIDER-MAN','PENDING');
+
+1 row created.
+
+SQL> */
+SP2-0042: unknown command "*/" - rest of line ignored.
+SQL>
+SQL> DECLARE
+  2     i_roll_no NUMBER;
+  3     name_of_book VARCHAR2(25);
+  4     no_of_days NUMBER;
+  5     return_date DATE := TO_DATE(SYSDATE,'DD-MM-YYYY');
+  6     temp NUMBER;
+  7     doi DATE;
+  8     fine NUMBER;
+  9  begin
+ 10  i_roll_no := &i_roll_no;
+ 11     name_of_book := '&nameofbook';
+ 12     --dbms_output.put_line(return_date);
+ 13     SELECT to_date(borrower.dateofissue,'DD-MM-YYYY') INTO doi FROM borrower WHERE borrower.roll_no = i_roll_no AND borrower.name_of_book = name_of_book;
+ 14     no_of_days := return_date-doi;
+ 15     dbms_output.put_line(no_of_days);
+ 16     IF (no_of_days >15 AND no_of_days <=30) THEN
+ 17             fine := 5*no_of_days;
+ 18
+ 19     ELSIF (no_of_days>30 ) THEN
+ 20             temp := no_of_days-30;
+ 21             fine := 150 + temp*50;
+ 22     END IF;
+ 23     dbms_output.put_line(fine);
+ 24     INSERT INTO fine VALUES(i_roll_no,return_date,fine);
+ 25     UPDATE borrower SET status = 'RETURNED' WHERE borrower.roll_no = i_roll_no;
+ 26
+ 27
+ 28  END;
+ 29  /
+Enter value for i_roll_no: 46
+old  10: i_roll_no := &i_roll_no;
+new  10: i_roll_no := 46;
+Enter value for nameofbook: dark matter
+old  11:        name_of_book := '&nameofbook';
+new  11:        name_of_book := 'dark matter';
+448
+21050
+
+PL/SQL procedure successfully completed.
+
+SQL> select * from borrower;
+
+   ROLL_NO NAME                      DATEOFISS NAME_OF_BOOK
+---------- ------------------------- --------- -------------------------
+STATUS
+--------------------
+        45 ASHUTOSH                  01-AUG-22 HARRY POTTER
+PENDING
+
+        46 ARYAN                     15-AUG-22 DARK MATTER
+RETURNED
+
+        47 ROHAN                     24-AUG-22 SILENT HILL
+PENDING
+
+
+   ROLL_NO NAME                      DATEOFISS NAME_OF_BOOK
+---------- ------------------------- --------- -------------------------
+STATUS
+--------------------
+        48 SANKET                    26-AUG-22 GOD OF WAR
+PENDING
+
+        49 SARTHAK                   09-SEP-22 SPIDER-MAN
+PENDING
+
+
+SQL> select * from fine;
+
+   ROLL_NO DATE_OF_R        AMT
+---------- --------- ----------
+        46 06-NOV-23      21050
